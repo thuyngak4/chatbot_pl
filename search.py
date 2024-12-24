@@ -1,68 +1,74 @@
-from elasticsearch import Elasticsearch
-from sentence_transformers import SentenceTransformer
-from LLM import generate
-from fastapi import FastAPI
+#Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+# .\venv\Scripts\Activate
+
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from typing import List, Dict
+from elasticsearch import Elasticsearch
+from elasticsearch.helpers import bulk
 from fastapi.middleware.cors import CORSMiddleware
+from langchain_elasticsearch import ElasticsearchRetriever
+from langchain_huggingface import HuggingFaceEmbeddings
+import logging
+from LLM import GPTHandler
 
 
+# Tạo một ứng dụng FastAPI
 app = FastAPI()
 
 # Cấu hình CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Cho phép tất cả các domain, bạn có thể thay thế "*" bằng domain cụ thể
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Cho phép tất cả các phương thức
-    allow_headers=["*"],  # Cho phép tất cả các header
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Kết nối với Elasticsearch
-es = Elasticsearch("http://localhost:9200")
+# Elasticsearch parameters
+es_url = "http://localhost:9200"  
+index_name = "legal_document"  
 
-# Khởi tạo mô hình SentenceTransformer
-embedding_model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+# Tạo một đối tượng Elasticsearch
+es = Elasticsearch([es_url])
+LLM = GPTHandler()
 
+# Request model
 class QueryRequest(BaseModel):
     query: str
 
-def search_in_elasticsearch(query, embedding_model, es_client):
-    # Tạo vector nhúng cho câu hỏi
-    query_vector = embedding_model.encode(query).tolist()
+embedding = HuggingFaceEmbeddings(model_name="bkai-foundation-models/vietnamese-bi-encoder")
 
-    # Truy vấn Elasticsearch
-    response = es_client.search(
-        index="law_chunks",
-        body={
-            "size": 5,  # Số lượng kết quả cần trả về
-            "query": {
-                "script_score": {
-                    "query": { "match_all": {} },
-                    "script": {
-                        "source": "cosineSimilarity(params.query_vector, 'embedding_vector') + 1.0",
-                        "params": { "query_vector": query_vector }
-                    }
-                }
-            }
+# Function to perform a vector search on Elasticsearch
+def vector_query(search_query: str) -> Dict:
+    vector = embedding.embed_query(search_query)  
+    return {
+        "knn": {
+            "field": "embedding",
+            "query_vector": vector,
+            "k": 5,
+            "num_candidates": 10,
         }
-    )
-    return response['hits']['hits']
+    }
 
+# FastAPI route to get an answer from Elasticsearch
 @app.post("/get_answer/")
 async def get_answer(request: QueryRequest):
-    # Lấy câu hỏi từ yêu cầu
-    query = request.query
-
-    # Tìm kiếm trong Elasticsearch
-    results = search_in_elasticsearch(query, embedding_model, es)
-    
-    # Tạo nội dung trả lời từ kết quả Elasticsearch
-    content = "Luật Hôn nhân và Gia đình \n"
+    search_query = request.query
+    vector_retriever = ElasticsearchRetriever.from_es_params(
+        index_name=index_name,
+        body_func=vector_query,
+        content_field="content",
+        url=es_url,
+    )
+    content = ""
+    results = vector_retriever.invoke(search_query)
     for result in results:
-        content += result["_source"]["metadata"]["clause_text"]
-    
-    # Sinh câu trả lời từ LLM (ChatGPT hoặc mô hình tương tự)
-    reply = generate(content, query)
+        content += result.page_content 
 
-    # Trả về câu trả lời cho người dùng
-    return {"answer": reply}
+    print(content)
+
+    result = LLM.process_query(content, search_query)
+
+    # Trả về nội dung các kết quả tìm kiếm
+    return {"results": result}

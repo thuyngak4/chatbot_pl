@@ -1,36 +1,40 @@
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts.chat import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+)
+from langchain.chains import LLMChain
 import os
-from openai import OpenAI
 from dotenv import load_dotenv
-import time
-import logging
 
-# Tải các biến môi trường từ file .env
+# Tải biến môi trường
 load_dotenv()
 
-# Khởi tạo client OpenAI với khóa API
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-def generate(content, question):
-    prompt = f"""
-        Please answer the question {question}. You are strictly required to use only the information provided below {content}.
-        Answer the question naturally and concisely.
-        Don't use phrases like "based on information provided" or similar
-    """
-    
-    try:
-        # Gọi API với client chat completion
-        response = client.chat.completions.create(
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            model="gpt-4o",
-            temperature=0.1,
-            max_tokens=2048,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0
+class GPTHandler:
+    def __init__(self, api_key: str = None, model: str = "gpt-4", temperature: float = 0.1, max_tokens: int = 2048):
+        """
+        Cấu hình GPT thông qua LangChain với các tham số mặc định.
+        """
+        # Cấu hình ChatOpenAI
+        self.llm = ChatOpenAI(
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            openai_api_key=api_key or os.getenv("OPENAI_API_KEY"),
         )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        logging.error(f"API request failed: {e}")
-        return "None"
+
+        # Prompt dành cho ChatOpenAI
+        self.prompt_template = ChatPromptTemplate.from_messages([
+            HumanMessagePromptTemplate.from_template("""
+            Please answer the question: {question}.
+            You are strictly required to use only the information provided below: {content}.
+            Answer the question naturally and add additional information to that answer
+            Don't use phrases like "Dựa trên thông tin đã cung cấp" or similar.
+            The included content may contain unrelated information, please only use relevant information to answer
+            """)
+        ])
+
+    def process_query(self, content: str, question: str) -> str:
+        # Sử dụng LLMChain để xử lý truy vấn
+        chain = LLMChain(llm=self.llm, prompt=self.prompt_template)
+        return chain.run({"content": content, "question": question})
