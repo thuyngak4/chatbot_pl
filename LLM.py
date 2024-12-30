@@ -28,7 +28,7 @@ class GPTHandler:
             HumanMessagePromptTemplate.from_template("""
             Please answer the question: {question}.
             You are strictly required to use only the information provided below: {content}.
-            Answer the question naturally and add additional information to that answer
+            Answer the question naturally
             Don't use phrases like "Dựa trên thông tin đã cung cấp" or similar.
             The included content may contain unrelated information, please only use relevant information to answer
             """)
