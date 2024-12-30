@@ -48,10 +48,43 @@ def vector_query(search_query: str) -> Dict:
             "query_vector": vector,
             "k": 5,
             "num_candidates": 10,
+        },
+        "_source": ["content", "dieu", "reference"]
+    }
+
+def build_query(relevant_articles: List[str]):
+    """
+    Xây dựng truy vấn Elasticsearch để tìm tài liệu có `dieu` nằm trong relevant_articles.
+    """
+    return {
+        "size": 100,
+        "query": {
+            "terms": {
+                "dieu.keyword": relevant_articles  # Sử dụng .keyword để tìm khớp chính xác
+            }
         }
     }
 
-# FastAPI route to get an answer from Elasticsearch
+def extract_relevant_articles(results):
+    relevant_articles = set()  # Sử dụng set để loại bỏ trùng lặp
+    for result in results:
+        dieu = result.metadata.get("_source", {}).get("dieu", None)
+        reference = result.metadata.get("_source", {}).get("reference", [])
+
+        # Thêm dieu vào danh sách nếu có
+        if dieu:
+            relevant_articles.add(dieu)
+
+        # Thêm các giá trị trong reference nếu có
+        if reference and isinstance(reference, list):
+            relevant_articles.update(reference)
+        elif reference:  # Nếu reference không phải là list
+            relevant_articles.add(reference)
+    
+    return list(relevant_articles)
+
+    
+ # FastAPI route to get an answer from Elasticsearch
 @app.post("/get_answer/")
 async def get_answer(request: QueryRequest):
     search_query = request.query
@@ -59,16 +92,25 @@ async def get_answer(request: QueryRequest):
         index_name=index_name,
         body_func=vector_query,
         content_field="content",
-        url=es_url,
+        url=es_url
     )
-    content = ""
+
     results = vector_retriever.invoke(search_query)
-    for result in results:
-        content += result.page_content 
+    relevant_articles = extract_relevant_articles(results)
 
-    print(content)
+    query = build_query(relevant_articles)
+    response = es.search(index=index_name, body=query)
 
-    result = LLM.process_query(content, search_query)
+    # Trích xuất content từ kết quả
+    contents = " ".join(
+    hit["_source"]["content"]
+    for hit in response["hits"]["hits"]
+    if "content" in hit["_source"]
+)
+    print(contents)
+    print(relevant_articles)
+
+    result = LLM.process_query(contents, search_query)
 
     # Trả về nội dung các kết quả tìm kiếm
     return {"results": result}
