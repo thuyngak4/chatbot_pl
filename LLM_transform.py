@@ -4,12 +4,14 @@ from langchain.prompts.chat import (
     HumanMessagePromptTemplate,
 )
 from langchain.chains import LLMChain
+from langchain.memory import ConversationBufferMemory
 import os
 from dotenv import load_dotenv
 
 class Transform:
     def __init__(self, llm):
         self.llm = llm
+        self.memory = ConversationBufferMemory(memory_key="history", input_key="query")
         self.prompt_template = ChatPromptTemplate.from_messages([
             HumanMessagePromptTemplate.from_template(
                 """
@@ -53,7 +55,7 @@ class Transform:
             )
         ])
 
-    def transform(self, query: str,history: str) -> str:
-        chain = LLMChain(llm=self.llm, prompt=self.prompt_template)
-        result = chain.run({"query": query,"history": history})
+    def transform(self, query: str) -> str:
+        chain = LLMChain(llm=self.llm, prompt=self.prompt_template, memory=self.memory)
+        result = chain.run({"query": query})
         return result

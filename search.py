@@ -13,6 +13,10 @@ from usecase2 import LegalDocumentSearch
 import logging
 import re
 from LLM import GPTHandler
+# from langchain.memory import ConversationBufferMemory
+
+# # Tạo đối tượng ConversationBufferMemory
+# memory = ConversationBufferMemory()
 # from langchain.vectorstores import ElasticsearchRetriever
 # from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 
@@ -91,15 +95,15 @@ def dynamic_field_query(result: str) -> Dict:
     }
 
 
-latest_history = {"question": "", "answer": ""}
 # FastAPI route to get an answer from Elasticsearch
 @app.post("/get_answer/")
 async def get_answer(request: QueryRequest):
     global latest_history 
     search_query = request.query
-    history = f"Câu hỏi trước đó: {latest_history['question']}\nĐáp án trước đó: {latest_history['answer']}"
+    # history = memory.load_memory_variables({}).get("history", "")
+    # print("--------------------------------",history,"--------------------------------")
     print("----------------", search_query,"-------------------")
-    question , category = LLM.process_query(search_query, history)
+    question , category = LLM.process_query(search_query)
     print(question,category,"------------------")
     if category == 0:
        search_engine = LegalDocumentSearch()
@@ -107,7 +111,6 @@ async def get_answer(request: QueryRequest):
        processed_question = search_engine.preprocess_question(question)
        content = search_engine.handle_question(processed_question)
 
-       latest_history = {"question": search_query, "answer": content}
     # for result in results:
     #     content += result.page_content 
 

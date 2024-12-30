@@ -25,27 +25,8 @@ class GPTHandler:
         )
         self.transformer = Transform(self.llm)
         self.classifier = Classify()
-        # self.answer_handler = Answer(self.llm)
 
-        # # Prompt dành cho ChatOpenAI
-        # self.prompt_template = ChatPromptTemplate.from_messages([
-        #     HumanMessagePromptTemplate.from_template("""
-        #     Please answer the question: {question}.
-        #     You are strictly required to use only the information provided below: {content}.
-        #     Answer the question naturally and add additional information to that answer
-        #     Don't use phrases like "Dựa trên thông tin đã cung cấp" or similar.
-        #     The included content may contain unrelated information, please only use relevant information to answer
-        #     """)
-        # ])
-
-    # def process_query(self, content: str, question: str) -> str:
-    def process_query(self, question: str, history : str) -> str:
-         # Step 1: Transform query
-        transformed_query = self.transformer.transform(question , history)
-
-        # Step 2: Classify transformed query
+    def process_query(self, question: str) -> str:
+        transformed_query = self.transformer.transform(question)
         processed_query, category = self.classifier.process_query(transformed_query)
-        # # Sử dụng LLMChain để xử lý truy vấn
-        # chain = LLMChain(llm=self.llm, prompt=self.prompt_template)
-        # return chain.run({"content": content, "question": question})
         return processed_query,category

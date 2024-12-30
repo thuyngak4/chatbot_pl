@@ -110,14 +110,3 @@ class LegalDocumentSearch:
 
         return "\n".join(results)
 
-# #Sử dụng class
-# if __name__ == "__main__":
-#     search_engine = LegalDocumentSearch()
-#     raw_question = "chương i nói gì".lower()
-#     processed_question = search_engine.preprocess_question(raw_question)
-    
-#     content = search_engine.handle_question(processed_question)
-
-#     LLM = GPTHandler()
-#     result = LLM.process_query(content, processed_question)
-#     print(result)
