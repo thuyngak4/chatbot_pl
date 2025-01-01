@@ -12,6 +12,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from usecase2 import LegalDocumentSearch
 import logging
 import re
+from retriever import retrieval_embedding, retrieval_keyword
 from LLM import GPTHandler
 # from langchain.memory import ConversationBufferMemory
 
@@ -42,75 +43,33 @@ LLM = GPTHandler()
 class QueryRequest(BaseModel):
     query: str
 
-# embedding = HuggingFaceEmbeddings(model_name="bkai-foundation-models/vietnamese-bi-encoder")
-embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
-# Function to perform a vector search on Elasticsearch
-def vector_query(search_query: str) -> Dict:
-    vector = embedding.embed_query(search_query)  
-    # print(vector)
-    return {
-        "knn": {
-            "field": "embedding_vector",
-            "query_vector": vector,
-            "k": 5,
-            "num_candidates": 10,
-        }
-    }
+embedding = HuggingFaceEmbeddings(model_name="bkai-foundation-models/vietnamese-bi-encoder")
+# embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
 
-def dynamic_field_query(result: str) -> Dict:
-    """
-    Kiểm tra biến result để tìm từ khóa "điều" hoặc "chương" và tạo truy vấn tìm kiếm phù hợp.
-
-    Args:
-        result (str): Chuỗi cần kiểm tra (ví dụ: "Điều 8").
-
-    Returns:
-        Dict: Truy vấn Elasticsearch dựa trên trường phù hợp.
-    """
-    # Xác định trường dựa trên từ khóa
-    result_lower = result.lower()  # Chuyển về chữ thường để so sánh
-    # Use regex to match "điều" or "chương" followed by numbers as a full match
-    matches = re.findall(r'\b(?:điều|chương)\s*\d+\b', result_lower)
-
-    # Join the matches into a string or process them further
-    filtered_result = ', '.join(matches)
-    if "điều" in result_lower:
-        field = "dieu"
-        # search_query = result_lower.replace("điều", "").strip()  # Loại bỏ từ "điều" để lấy giá trị
-    elif "chương" in result_lower:
-        field = "chuong"
-        # search_query = result_lower.replace("chương", "").strip()  # Loại bỏ từ "chương" để lấy giá trị
-    else:
-        raise ValueError("Result không chứa 'điều' hoặc 'chương'.")
-    print("-----------------------------------")
-    print(filtered_result)
-    # Tạo truy vấn tìm kiếm
-    return {
-        "query": {
-            "match_phrase": {
-                field: filtered_result
-            }
-        },
-        "size": 50 
-    }
-
-
+retrieve_keyword = retrieval_keyword()
+retrieve_embedding= retrieval_embedding()
 # FastAPI route to get an answer from Elasticsearch
 @app.post("/get_answer/")
 async def get_answer(request: QueryRequest):
     global latest_history 
     search_query = request.query
-    # history = memory.load_memory_variables({}).get("history", "")
-    # print("--------------------------------",history,"--------------------------------")
-    print("----------------", search_query,"-------------------")
-    question , category = LLM.process_query(search_query)
-    print(question,category,"------------------")
-    if category == 0:
-       search_engine = LegalDocumentSearch()
-       question = question.lower()
-       processed_question = search_engine.preprocess_question(question)
-       content = search_engine.handle_question(processed_question)
 
+    print("----------------", search_query,"-------------------")
+    question, category = LLM.process_query(search_query)
+    print(question,category,"------------------")
+    question = question.lower()
+    if category == 0:
+       processed_question = retrieve_keyword.preprocess_question(question)
+       content = retrieve_keyword.search(processed_question)
+       
+    elif category == 2:
+        content = LLM.answerer.answer_smalltalk(search_query,category)
+
+    elif category == 4:
+        retrived_content = retrieve_embedding.search(question)
+        content = LLM.answerer.answrer_embed(retrived_content,search_query,category)
+    if category == 1 or category == 3:
+        content = question
     # for result in results:
     #     content += result.page_content 
 
