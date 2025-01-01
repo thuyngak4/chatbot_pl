@@ -18,9 +18,11 @@ class Transform:
      Lịch sử truy vấn:
     {history}
 
+
     Câu hỏi hiện tại: {query}
 
     *Quy trình xử lý*:
+    Trả về lịch sử truy vấn nhận được dưới dạng :"Lịch sử truy vấn": nội dung
     1. *Kiểm tra ngôn ngữ*:
        - Nếu câu hỏi hiện tại không hoàn toàn bằng tiếng Việt không cần dựa vào lịch sử truy vấn (bao gồm cả các từ đơn lẻ hoặc cụm từ thông dụng không mang ý nghĩa cụ thể trong tiếng Việt như "hi", "hello", "hey"), trả về::
          *Truy vấn chuyển đổi:* "Tôi không hiểu bạn đang nói gì."
@@ -45,6 +47,8 @@ class Transform:
          *Truy vấn chuyển đổi:* "Small talk".
        - Ngược lại, nếu không phải small talk và ngoài phạm vi pháp luật, trả về:
          *Truy vấn chuyển đổi:* "Đây không phải phạm vi lĩnh vực tôi biết. Tôi là chatbot hỗ trợ tư vấn Luật hôn nhân và gia đình. Bạn có câu hỏi gì về lĩnh vực này không?"
+
+
     """
             )
         ])

@@ -4,8 +4,10 @@ from typing import List, Dict
 from LLM_answer import LLM_finalanswer
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_elasticsearch import ElasticsearchRetriever
+from rerank import Reranker
 
 embedding = HuggingFaceEmbeddings(model_name="bkai-foundation-models/vietnamese-bi-encoder")
+rerank = Reranker()
 
 class retrieval_embedding:
     def __init__(self, host="localhost", port=9200, scheme="http", index="legal_document"):
@@ -15,27 +17,13 @@ class retrieval_embedding:
     def vector_query(self, search_query: str) -> Dict:
         vector = embedding.embed_query(search_query)
         return {
-            "query": {
-                "function_score": {
-                    "query": {
-                        "match_all": {}  # Có thể thay bằng truy vấn khác nếu cần
-                    },
-                    "functions": [
-                        {
-                            "script_score": {
-                                "script": {
-                                    "source": "cosineSimilarity(params.query_vector, doc['embedding']) + 1.0",  # Cosine similarity calculation
-                                    "params": {
-                                        "query_vector": vector  # Vector tìm kiếm
-                                    }
-                                }
-                            }
-                        }
-                    ],
-                    "boost_mode": "multiply"  # Cách kết hợp điểm số của các truy vấn
-                }
+            "knn": {
+                "field": "embedding",
+                "query_vector": vector,
+                "k": 20,
+                "num_candidates": 100,
             },
-            "_source": ["content", "dieu", "reference"]  # Các trường cần lấy
+            "_source": ["content", "dieu", "reference"]
         }
 
     def extract_relevant_articles(self, results):
@@ -73,8 +61,22 @@ class retrieval_embedding:
         )
 
         results = vector_retriever.invoke(search_query)
-        relevant_articles = self.extract_relevant_articles(results)
+        print(type(results))
 
+        for i, result in enumerate(results):
+            print(f"Document {i + 1}:")
+            for key, value in vars(result).items():
+                print(f"  {key}: {value}")
+
+        page_contents = [result.page_content for result in results]
+
+        result_rerank = rerank.rerank(search_query, page_contents, 5)
+
+        for i in result_rerank:
+            print(i)
+
+
+        relevant_articles = self.extract_relevant_articles(results)
         query = self.build_query(relevant_articles)
         response = self.es.search(index=self.index, body=query)
 
@@ -82,12 +84,9 @@ class retrieval_embedding:
             hit["_source"].get("content", "")
             for hit in response["hits"]["hits"]
         )
-
         LLM_answer = LLM_finalanswer()
 
         return LLM_answer.answer(contents, search_query)
-
-
 
 
 class retrieval_keyword:
