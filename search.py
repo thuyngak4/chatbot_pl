@@ -36,6 +36,9 @@ async def get_answer(request: QueryRequest):
 
     search_query = request.query
 
+    # question = tran.transform(search_query)
+    # print(question)
+
     question , category = LLM.process_query(search_query)
     print(question,category,"\n------------------")
     question = question.lower()
@@ -49,7 +52,7 @@ async def get_answer(request: QueryRequest):
     if category == 2:
        content = retrieve_embedding.search(question)
 
-    result = f"cate:{category} _content : {content} "
+    result = f"cate:{category} _content : {content}"
     # Trả về nội dung các kết quả tìm kiếm
     return {"results": result}
     # return {"results": content}
