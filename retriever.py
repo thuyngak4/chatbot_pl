@@ -1,7 +1,6 @@
 from elasticsearch import Elasticsearch
 import re
 from typing import List, Dict
-from LLM_answer import LLM_finalanswer
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_elasticsearch import ElasticsearchRetriever
 from rerank import Reranker
@@ -61,22 +60,13 @@ class retrieval_embedding:
         )
 
         results = vector_retriever.invoke(search_query)
-        print(type(results))
-
-        for i, result in enumerate(results):
-            print(f"Document {i + 1}:")
-            for key, value in vars(result).items():
-                print(f"  {key}: {value}")
-
         page_contents = [result.page_content for result in results]
 
         result_rerank = rerank.rerank(search_query, page_contents, 5)
-
-        for i in result_rerank:
-            print(i)
-
+        results = [results[i] for i in result_rerank]
 
         relevant_articles = self.extract_relevant_articles(results)
+
         query = self.build_query(relevant_articles)
         response = self.es.search(index=self.index, body=query)
 
@@ -84,9 +74,10 @@ class retrieval_embedding:
             hit["_source"].get("content", "")
             for hit in response["hits"]["hits"]
         )
-        LLM_answer = LLM_finalanswer()
+        # LLM_answer = LLM_finalanswer()
 
-        return LLM_answer.answer(contents, search_query)
+        # return LLM_answer.answer(contents, search_query)
+        return contents
 
 
 class retrieval_keyword:

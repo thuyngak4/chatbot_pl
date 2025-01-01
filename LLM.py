@@ -10,6 +10,7 @@ from LLM_transform import Transform
 from LLM_classify import Classify
 # Tải biến môi trường
 load_dotenv()
+from LLM_answer import Answer
 
 class GPTHandler:
     def __init__(self, api_key: str = None, model: str = "gpt-4o", temperature: float = 0.1, max_tokens: int = 2048):
@@ -25,8 +26,12 @@ class GPTHandler:
         )
         self.transformer = Transform(self.llm)
         self.classifier = Classify()
+        self.answerer = Answer(self.llm)
 
     def process_query(self, question: str) -> str:
         transformed_query = self.transformer.transform(question)
         processed_query, category = self.classifier.process_query(transformed_query)
+        # answer = ""
+        # if (category==2):
+        #     answer = self.answerer.answer_smalltalk(question,category)
         return processed_query,category

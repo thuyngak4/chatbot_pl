@@ -39,18 +39,22 @@ async def get_answer(request: QueryRequest):
     # question = tran.transform(search_query)
     # print(question)
 
-    question , category = LLM.process_query(search_query)
-    print(question,category,"\n------------------")
+    print("----------------", search_query,"-------------------")
+    question, category = LLM.process_query(search_query)
+    print(question,category,"------------------")
     question = question.lower()
-
-    # ví dụ: Nội dung điều 1 là gì
     if category == 0:
        processed_question = retrieve_keyword.preprocess_question(question)
        content = retrieve_keyword.search(processed_question)
+       
+    elif category == 2:
+        content = LLM.answerer.answer_smalltalk(search_query,category)
 
-    #ví dụ: Bao nhiêu tuổi được kết hôn
-    if category == 2:
-       content = retrieve_embedding.search(question)
+    elif category == 4:
+        retrived_content = retrieve_embedding.search(question)
+        content = LLM.answerer.answrer_embed(retrived_content,search_query,category)
+    if category == 1 or category == 3:
+        content = question
 
     result = f"cate:{category} _content : {content}"
     # Trả về nội dung các kết quả tìm kiếm
