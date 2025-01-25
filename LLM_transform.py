@@ -23,7 +23,7 @@ class Transform:
     **Quy trình xử lý**:
     1. **Kiểm tra ngôn ngữ**:
        - Nếu câu hỏi hiện tại không hoàn toàn bằng tiếng Việt không cần dựa vào lịch sử truy vấn (bao gồm cả các từ đơn lẻ hoặc cụm từ thông dụng không mang ý nghĩa cụ thể trong tiếng Việt như "hi", "hello", "hey"), trả về::
-         **Truy vấn chuyển đổi:** "Tôi không hiểu bạn đang nói gì."
+         **Truy vấn chuyển đổi:** "Xin lỗi, tôi không hiểu bạn đang nói gì."
 
     2. **Xác định phạm vi và chuyển đổi câu hỏi**:
        - Nếu câu hỏi liên quan đến Luật Hôn nhân và Gia đình Việt Nam:

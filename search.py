@@ -1,5 +1,5 @@
 #Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-# .\venv\Scripts\Activate
+# .\v_env\Scripts\Activate
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from retriever import retrieval_embedding, retrieval_keyword
 import re
 from LLM import GPTHandler
+import time
 
 # Tạo một ứng dụng FastAPI
 app = FastAPI()
@@ -34,29 +35,38 @@ retrieve_embedding= retrieval_embedding()
 @app.post("/get_answer/")
 async def get_answer(request: QueryRequest):
 
-    search_query = request.query
+    # Ghi lại thời gian bắt đầu
+    start_time = time.time()
 
-    # question = tran.transform(search_query)
-    # print(question)
+    search_query = request.query
 
     print("----------------", search_query,"-------------------")
     question, category = LLM.process_query(search_query)
     print(question,category,"------------------")
-    question = question.lower()
+    
     if category == 0:
+       question = question.lower()
        processed_question = retrieve_keyword.preprocess_question(question)
        content = retrieve_keyword.search(processed_question)
        
     elif category == 2:
         content = LLM.answerer.answer_smalltalk(search_query,category)
-
     elif category == 4:
+        question = question.lower()
         retrived_content = retrieve_embedding.search(question)
         content = LLM.answerer.answrer_embed(retrived_content,search_query,category)
     if category == 1 or category == 3:
         content = question
 
-    result = f"cate:{category} _content : {content}"
+    result = f"{content}"
+
+    # Ghi lại thời gian kết thúc
+    end_time = time.time()
+
+    # Tính thời gian thực thi
+    execution_time = end_time - start_time
+    print(f"Time taken: {execution_time:.4f} seconds")
+
     # Trả về nội dung các kết quả tìm kiếm
     return {"results": result}
     # return {"results": content}

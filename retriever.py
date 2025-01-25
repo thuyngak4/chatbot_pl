@@ -68,8 +68,9 @@ class retrieval_embedding:
         relevant_articles = self.extract_relevant_articles(results)
 
         query = self.build_query(relevant_articles)
+        # print ("Q ",query)
         response = self.es.search(index=self.index, body=query)
-
+        # print("R ",response)
         contents = " ".join(
             hit["_source"].get("content", "")
             for hit in response["hits"]["hits"]

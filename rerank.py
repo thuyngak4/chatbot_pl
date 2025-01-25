@@ -2,7 +2,7 @@ import cohere
 
 class Reranker:
     def __init__(self, model='rerank-multilingual-v3.0'):
-        self.client = cohere.Client('SlfL5cHe91UybGinAUOLSVe9JmLoLWFaPdZUBS9d')
+        self.client = cohere.Client('PruDWg2hOzOEURHnUkPnu4IfsVTa6w6n0XBYK8K9')
         self.model = model
 
     def rerank(self, query, documents, top_n=None):
